@@ -337,4 +337,77 @@ describe "options: " do
       end
     end
   end
+
+  context "using namespaces" do
+    before :all do
+
+      class MountedApi < Grape::API
+        resource :foo do
+
+          desc 'This gets something.'
+          get '/something' do
+            { bla: 'something' }
+          end
+
+        end
+      end
+
+      class SimpleApiWithUseNamespace < Grape::API
+        NON_DEFAULT_BASE_PATH = "http://www.breakcoregivesmewood.com"
+
+        mount MountedApi
+        add_swagger_documentation :use_namespace => true
+      end
+
+    end
+
+    def app; SimpleApiWithUseNamespace end
+
+    it "retrieves the given base-path on /swagger_doc" do
+      get '/swagger_doc.json'
+      JSON.parse(last_response.body)["apis"].first["path"].should == "/swagger_doc/foo.{format}"
+    end
+
+    it "retrieves the same given base-path for mounted-api" do
+      get '/swagger_doc/foo.json'
+      JSON.parse(last_response.body)["apis"].first["path"].should == "/foo/something.{format}"
+    end
+  end
+
+  context "using namespaces and an api version" do
+    before :all do
+
+      class MountedApi < Grape::API
+        resource :foo do
+
+          desc 'This gets something.'
+          get '/something' do
+            { bla: 'something' }
+          end
+
+        end
+      end
+
+      class SimpleApiWithUseNamespace < Grape::API
+        NON_DEFAULT_BASE_PATH = "http://www.breakcoregivesmewood.com"
+
+        mount MountedApi
+        add_swagger_documentation :use_namespace => true, :api_version => 'master'
+      end
+
+    end
+
+    def app; SimpleApiWithUseNamespace end
+
+    it "retrieves the given base-path on /swagger_doc" do
+      get '/swagger_doc.json'
+      JSON.parse(last_response.body)["apis"].first["path"].should == "/swagger_doc/master/foo.{format}"
+    end
+
+    it "retrieves the same given base-path for mounted-api" do
+      get '/swagger_doc/master/foo.json'
+      JSON.parse(last_response.body)["apis"].first["path"].should == "/foo/something.{format}"
+    end
+  end
+
 end

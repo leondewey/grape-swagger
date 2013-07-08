@@ -13,7 +13,19 @@ module Grape
 
         @combined_routes = {}
         routes.each do |route|
-          resource = route.route_path.match('\/(\w*?)[\.\/\(]').captures.first
+          resource = ''
+
+          if options[:use_namespace]
+            unless route.route_namespace == '/'
+              resource =[
+                options[:api_version],
+                route.route_namespace.gsub('/', '')
+              ].compact.join('/')
+            end
+          else
+            resource = route.route_path.match('\/(\w*?)[\.\/\(]').captures.first
+          end
+
           next if resource.empty?
           resource.downcase!
           @combined_routes[resource] ||= []
@@ -81,10 +93,12 @@ module Grape
               {
                 "name" => { :desc => "Resource name of mounted API", :type => "string", :required => true },
               }
-            get "#{@@mount_path}/:name" do
+            get "#{@@mount_path}/(*:name)", anchor: false do
+              name = env["PATH_INFO"].split('.').first
               header['Access-Control-Allow-Origin'] = '*'
               header['Access-Control-Request-Method'] = '*'
-              routes = @@target_class::combined_routes[params[:name]]
+
+              routes = @@target_class::combined_routes[name]
               routes_array = routes.map do |route|
                 notes = route.route_notes && @@markdown ? Kramdown::Document.new(strip_heredoc(route.route_notes)).to_html : route.route_notes
                 http_codes = parse_http_codes route.route_http_codes
